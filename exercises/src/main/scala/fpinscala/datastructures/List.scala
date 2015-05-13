@@ -52,7 +52,7 @@ object List { // `List` companion object. Contains functions for creating and wo
 
   def tail[A](l: List[A]): List[A] = l match {
     case Nil => sys.error("tail of empty list")
-    case Cons(h, t) => t
+    case Cons(_, t) => t
   }
 
   def setHead[A](l: List[A], h: A): List[A] = l match {
@@ -100,10 +100,10 @@ object List { // `List` companion object. Contains functions for creating and wo
     foldLeft(reverse(l), z)((b, a) => f(a, b))
 
   def foldLeftByRightNoReverse[A, B](l: List[A], z: B)(f: (B, A) => B): B =
-    foldRight(l, (b: B) => b)((a, g) => b => f(g(b), a))(z)
+    foldRight(l, (b: B) => b)((a, g) => b => g(f(b, a)))(z)
 
   def foldRightByLeftNoReverse[A, B](l: List[A], z: B)(f: (A, B) => B): B =
-    foldLeft(l, (b: B) => b)((g, a) => b => f(a, g(b)))(z)
+    foldLeft(l, (b: B) => b)((g, a) => b => g(f(a, b)))(z)
 
   def sum3(ns: List[Int]) =
     foldLeft(ns, 0)(_ + _)
