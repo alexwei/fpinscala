@@ -40,11 +40,11 @@ object MyModule {
     @annotation.tailrec
     def go(n: Int, last: Int, secondLast: Int): Int  =
       if (n <= 0)
-        last + secondLast
+        secondLast
       else
         go(n - 1, last + secondLast, last)
 
-    go(n - 2, 1, 0)
+    go(n, 1, 0)
   }
 
   // This definition and `formatAbs` are very similar..
