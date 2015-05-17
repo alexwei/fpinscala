@@ -140,4 +140,19 @@ object List { // `List` companion object. Contains functions for creating and wo
     }
     go(as, bs, cs => cs)
   }
+
+  @annotation.tailrec
+  def startsWith[A](sup: List[A], sub: List[A]): Boolean = (sup, sub) match {
+    case (_, Nil) => true
+    case (Cons(h1, t1), Cons(h2, t2)) if h1 == h2 => startsWith(t1, t2)
+    case _ => false
+  }
+
+  @annotation.tailrec
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean =
+    if (startsWith(sup, sub)) true
+    else sup match {
+      case Nil => false
+      case Cons(h, t) => hasSubsequence(t, sub)
+    }
 }
