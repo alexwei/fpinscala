@@ -112,4 +112,32 @@ object List { // `List` companion object. Contains functions for creating and wo
     foldLeft(ns, 1.0)(_ * _)
 
   def map[A,B](l: List[A])(f: A => B): List[B] = foldRight(l, Nil: List[B])((a, acc) => Cons(f(a), acc))
+
+  def concat[A](ls: List[List[A]]): List[A] = foldRight(ls, List[A]())(append)
+
+  def add1(l: List[Int]): List[Int] = map(l)(_ + 1)
+
+  def double2String(l: List[Double]): List[String] = map(l)(_.toString)
+
+  def filter[A](l: List[A])(p: A => Boolean): List[A] = foldRight(l, List[A]())((a, acc) => if (p(a)) Cons(a, acc) else acc)
+
+  def flatMap[A, B](l: List[A])(f: A => List[B]): List[B] = foldRight(l, List[B]())((a, acc) => append(f(a), acc))
+
+  def filterViaFlatMap[A](l: List[A])(p: A => Boolean): List[A] = flatMap(l)(a => if (p(a)) List(a) else Nil)
+
+  def addList(as: List[Int], bs: List[Int]): List[Int] =
+    reverse(foldLeft(as, (bs, List[Int]())){
+      case ((Cons(bh, bt), acc), a) => (bt, Cons(a + bh, acc))
+      case ((Nil, acc), _) => (Nil, acc)
+    }._2)
+
+  def zipWith[A, B, C](as: List[A], bs: List[B])(f: (A, B) => C): List[C] = {
+    @annotation.tailrec
+    def go(al: List[A], bl: List[B], g: List[C] => List[C]): List[C] = (al, bl) match {
+      case (Nil, _) => g(Nil)
+      case (_, Nil) => g(Nil)
+      case (Cons(a, at), Cons(b, bt)) => go(at, bt, acc => g(Cons(f(a, b), acc)))
+    }
+    go(as, bs, cs => cs)
+  }
 }
