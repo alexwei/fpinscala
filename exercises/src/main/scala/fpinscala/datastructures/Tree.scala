@@ -7,7 +7,41 @@ case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
 
 object Tree {
 
-  val tree = Branch(Branch(Branch(Branch(Leaf(1), Leaf(2)), Leaf(3)), Branch(Leaf(4), Branch(Leaf(5), Leaf(6)))), Branch(Leaf(7), Branch(Leaf(8), Branch(Leaf(9), Branch(Leaf(10), Branch(Leaf(11), Leaf(12)))))))
+  val tree =
+    Branch(
+      Branch(
+        Branch(
+          Branch(
+            Leaf(1),
+            Leaf(2)
+          ),
+          Leaf(3)
+        ),
+        Branch(
+          Leaf(4),
+          Branch(
+            Leaf(5),
+            Leaf(6)
+          )
+        )
+      ),
+      Branch(
+        Leaf(7),
+        Branch(
+          Leaf(8),
+          Branch(
+            Leaf(9),
+            Branch(
+              Leaf(10),
+              Branch(
+                Leaf(11),
+                Leaf(12)
+              )
+            )
+          )
+        )
+      )
+    )
 
   def size[A](tree: Tree[A]): Int = {
     @annotation.tailrec
@@ -37,6 +71,20 @@ object Tree {
       case ((Branch(l, r), d), _) => go((l, d + 1), Cons((r, d + 1), ts), result)
     }
     go((tree, 0), Nil, None)
+  }
+
+  def map[A, B](tree: Tree[A])(f: A => B): Tree[B] = {
+    @annotation.tailrec
+    def go(h: Either[Tree[B], Tree[A]], ts: List[Either[Tree[B], Tree[A]]]): Tree[B] = (h, ts) match {
+      case (Right(Leaf(a)), Nil) => Leaf(f(a))
+      case (Right(Leaf(a)), Cons(Right(ta), rest)) => go(Right(ta), Cons(Left(Leaf(f(a))), rest))
+      case (Right(Leaf(a)), Cons(Left(tb), rest)) => go(Left(Branch(tb, Leaf(f(a)))), rest)
+      case (Right(Branch(la, ra)), rest) => go(Right(la), Cons(Right(ra), rest))
+      case (Left(tb), Nil) => tb
+      case (Left(tb), Cons(Right(ta), rest)) => go(Right(ta), Cons(Left(tb), rest))
+      case (Left(tb), Cons(Left(tb1), rest)) => go(Left(Branch(tb1, tb)), rest)
+    }
+    go(Right(tree), Nil)
   }
 
 }
