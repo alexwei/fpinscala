@@ -87,4 +87,26 @@ object Tree {
     go(Right(tree), Nil)
   }
 
+  def fold[A, B](tree: Tree[A])(f: A => B)(g: (B, B) => B): B = {
+    @annotation.tailrec
+    def go(h: Either[B, Tree[A]], ts: List[Either[B, Tree[A]]]): B = (h, ts) match {
+      case (Right(Leaf(a)), Nil) => f(a)
+      case (Right(Leaf(a)), Cons(Right(ta), rest)) => go(Right(ta), Cons(Left(f(a)), rest))
+      case (Right(Leaf(a)), Cons(Left(b), rest)) => go(Left(g(b, f(a))), rest)
+      case (Right(Branch(la, ra)), rest) => go(Right(la), Cons(Right(ra), rest))
+      case (Left(b), Nil) => b
+      case (Left(b), Cons(Right(ta), rest)) => go(Right(ta), Cons(Left(b), rest))
+      case (Left(b1), Cons(Left(b0), rest)) => go(Left(g(b0, b1)), rest)
+    }
+    go(Right(tree), Nil)
+  }
+
+  def sizeViaFold[A](tree: Tree[A]): Int = fold(tree)(_ => 1)(_ + _ + 1)
+
+  def maximumViaFold(tree: Tree[Int]): Int = fold(tree)(identity)(_ max _)
+
+  def depthViaFold[A](tree: Tree[A]): Int = fold(tree)(_ => 0)(_ + 1 max _ + 1)
+
+  def mapViaFold[A, B](tree: Tree[A])(f: A => B): Tree[B] = fold(tree)(a => Leaf(f(a)): Tree[B])(Branch(_, _))
+
 }
