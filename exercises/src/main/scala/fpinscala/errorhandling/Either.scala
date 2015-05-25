@@ -29,7 +29,11 @@ case class Left[+E](get: E) extends Either[E,Nothing]
 case class Right[+A](get: A) extends Either[Nothing,A]
 
 object Either {
-  def traverse[E,A,B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] = es match {
+
+  def traverse[E,A,B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] =
+    es.foldRight[Either[E, List[B]]](Right(Nil))((a, acc) => f(a).map2(acc)(_ :: _))
+
+  def traversePM[E,A,B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] = es match {
     case Nil => Right(Nil)
     case a :: as => f(a).map2(traverse(as)(f))(_ :: _)
   }
