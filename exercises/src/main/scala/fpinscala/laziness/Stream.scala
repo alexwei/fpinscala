@@ -118,7 +118,7 @@ trait Stream[+A] {
       case (Cons(ah, at), Cons(bh, bt)) => Some((Some(ah()), Some(bh())), (at(), bt()))
     }
 
-  def startsWith[B](s: Stream[B]): Boolean = 
+  def startsWith[B](s: Stream[B]): Boolean =
     Stream.unfold(zipAll(s)) {
       case Empty => None
       case Cons(h, t) => h() match {
@@ -127,6 +127,15 @@ trait Stream[+A] {
         case (Some(a), Some(b)) => Some((a == b, t()))
       }
     } forAll identity
+
+  def tails: Stream[Stream[A]] =
+    Stream.unfold(this) {
+      case Empty => None
+      case x @ Cons(h, t) => Some(x, t())
+    } append Stream(Stream.empty)
+
+  def hasSubsequence[B](s: Stream[B]): Boolean =
+    tails exists (_.startsWith(s))
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
