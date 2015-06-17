@@ -70,6 +70,9 @@ trait Stream[+A] {
   def filter(p: A => Boolean): Stream[A] =
     foldRight(empty[A])((a, s) => if (p(a)) cons(a, s) else s)
 
+  def findViaFilter(p: A => Boolean): Option[A] =
+    filter(p).headOption
+
   def append[B >: A](sb: => Stream[B]): Stream[B] =
     foldRight(sb)((a, s) => cons(a, s))
 
@@ -115,7 +118,15 @@ trait Stream[+A] {
       case (Cons(ah, at), Cons(bh, bt)) => Some((Some(ah()), Some(bh())), (at(), bt()))
     }
 
-  def startsWith[B](s: Stream[B]): Boolean = sys.error("todo")
+  def startsWith[B](s: Stream[B]): Boolean = 
+    Stream.unfold(zipAll(s)) {
+      case Empty => None
+      case Cons(h, t) => h() match {
+        case (_, None) => Some((true, Empty))
+        case (None, Some(_)) => Some((false, Empty))
+        case (Some(a), Some(b)) => Some((a == b, t()))
+      }
+    } forAll identity
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
