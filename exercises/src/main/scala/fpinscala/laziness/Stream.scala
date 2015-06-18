@@ -136,6 +136,20 @@ trait Stream[+A] {
 
   def hasSubsequence[B](s: Stream[B]): Boolean =
     tails exists (_.startsWith(s))
+
+  def scanRight[B](z: => B)(f: (A, => B) => B): Stream[B] =
+    foldRight(Stream(z)){
+      case (a, bs @ Cons(b, _)) => cons(f(a, b()), bs)
+    }
+
+//  def scanRightViaUnfold[B](z: => B)(f: (A, => B) => B): Stream[B] =
+//    Stream.unfold(this) {
+//      case Empty => None
+//      case x @ Cons(h, t) => Some(f(h(), ), t())
+//    } append Stream(z)
+
+  def tailsViaScanRight: Stream[Stream[A]] =
+    scanRight(Stream.empty[A])(cons(_, _))
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
