@@ -29,25 +29,23 @@ trait Stream[+A] {
 
   def toListNaive: List[A] = this match {
     case Empty => Nil
-    case Cons(h, t) => h() :: t().toList
+    case Cons(h, t) => h() :: t().toListNaive
   }
 
   def take(n: Int): Stream[A] = this match {
-      case Empty => empty
-      case _ if n < 1 => empty
-      case Cons(h, t) => cons(h(), t().take(n - 1))
-    }
+    case Cons(h, t) if n > 0 => cons(h(), t().take(n - 1))
+    case _ => empty
+  }
 
-  def drop(n: Int): Stream[A] = this match {
-    case Empty => empty
-    case _ if n < 1 => this
-    case Cons(h, t) => t().drop(n - 1)
+  @annotation.tailrec
+  final def drop(n: Int): Stream[A] = this match {
+    case Cons(h, t) if n > 0 => t().drop(n - 1)
+    case _ => this
   }
 
   def takeWhile(p: A => Boolean): Stream[A] = this match {
-    case Empty => empty
     case Cons(h, t) if p(h()) => cons(h(), t().takeWhile(p))
-    case Cons(_, t) => empty
+    case _ => empty
   }
 
   def takeWhileFold(p: A => Boolean): Stream[A] =
@@ -90,7 +88,6 @@ trait Stream[+A] {
 
   def takeViaUnfold(n: Int): Stream[A] =
     Stream.unfold((this, n)){
-      case (Empty, _) => None
       case (Cons(h, t), i) if i > 0 => Some(h(), (t(), i - 1))
       case _ => None
     }
@@ -110,12 +107,16 @@ trait Stream[+A] {
       case (Cons(ah, at), Cons(bh, bt)) => Some(f(ah(), bh()), (at(), bt())) 
     }
 
-  def zipAll[B](bs: Stream[B]): Stream[(Option[A], Option[B])] =
+  def zip[B](bs: Stream[B]): Stream[(A, B)] = zipWith(bs)((_, _))
+
+  def zipAll[B](bs: Stream[B]): Stream[(Option[A], Option[B])] = zipAllWith(bs)((_, _))
+
+  def zipAllWith[B, C](bs: Stream[B])(f: (Option[A], Option[B]) => C): Stream[C] =
     Stream.unfold((this, bs)) {
       case (Empty, Empty) => None
-      case (Cons(ah, at), Empty) => Some((Some(ah()), None), (at(), Empty))
-      case (Empty, Cons(bh, bt)) => Some((None, Some(bh())), (Empty, bt()))
-      case (Cons(ah, at), Cons(bh, bt)) => Some((Some(ah()), Some(bh())), (at(), bt()))
+      case (Cons(ah, at), Empty) => Some(f(Some(ah()), None), (at(), Empty))
+      case (Empty, Cons(bh, bt)) => Some(f(None, Some(bh())), (Empty, bt()))
+      case (Cons(ah, at), Cons(bh, bt)) => Some(f(Some(ah()), Some(bh())), (at(), bt()))
     }
 
   def startsWith[B](s: Stream[B]): Boolean =
@@ -169,7 +170,10 @@ object Stream {
 
   val ones: Stream[Int] = Stream.cons(1, ones)
 
-  def constant[A](a: A): Stream[A] = cons(a, constant(a))
+  def constant[A](a: A): Stream[A] = {
+    lazy val result: Stream[A] = Cons(() => a, () => result)
+    result
+  }
 
   def from(n: Int): Stream[Int] = cons(n, from(n + 1))
 
