@@ -129,10 +129,22 @@ trait Stream[+A] {
       }
     } forAll identity
 
+  def startsWithMap[B](s: Stream[B]): Boolean =
+    zipAll(s).map{
+      case (_, None) => true
+      case (None, Some(_)) => false
+      case (Some(a), Some(b)) => a == b
+    } forAll identity
+
+  def startsWithAnswer[B](s: Stream[B]): Boolean =
+    zipAll(s).takeWhile(_._2.isDefined).forAll{
+      case (oa, ob) => oa == ob
+    }
+
   def tails: Stream[Stream[A]] =
     Stream.unfold(this) {
       case Empty => None
-      case x @ Cons(h, t) => Some(x, t())
+      case x @ Cons(_, t) => Some((x, t())) // answer : case s => Some((s, s drop 1)) nice.
     } append Stream(Stream.empty)
 
   def hasSubsequence[B](s: Stream[B]): Boolean =
@@ -143,11 +155,13 @@ trait Stream[+A] {
       case (a, bs @ Cons(b, _)) => cons(f(a, b()), bs)
     }
 
-//  def scanRightViaUnfold[B](z: => B)(f: (A, => B) => B): Stream[B] =
-//    Stream.unfold(this) {
-//      case Empty => None
-//      case x @ Cons(h, t) => Some(f(h(), ), t())
-//    } append Stream(z)
+  def scanRightLazy[B](z: => B)(f: (A, => B) => B): Stream[B] =
+    foldRight((z, Stream(z))) {
+      case (a, acc) =>
+        lazy val acc0 = acc
+        lazy val b = f(a, acc0._1)
+        (b, cons(b, acc0._2))
+    }._2
 
   def tailsViaScanRight: Stream[Stream[A]] =
     scanRight(Stream.empty[A])(cons(_, _))
