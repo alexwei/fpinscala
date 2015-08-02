@@ -8,6 +8,8 @@ object Par {
   def run[A](s: ExecutorService)(a: Par[A]): Future[A] = a(s)
 
   def unit[A](a: A): Par[A] = (es: ExecutorService) => UnitFuture(a) // `unit` is represented as a function that returns a `UnitFuture`, which is a simple implementation of `Future` that just wraps a constant value. It doesn't use the `ExecutorService` at all. It's always done and can't be cancelled. Its `get` method simply returns the value that we gave it.
+
+  def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
   
   private case class UnitFuture[A](get: A) extends Future[A] {
     def isDone = true 
@@ -31,7 +33,37 @@ object Par {
   def map[A,B](pa: Par[A])(f: A => B): Par[B] = 
     map2(pa, unit(()))((a,_) => f(a))
 
+  def asyncF[A, B](f: A => B): A => Par[B] =
+    a => lazyUnit(f(a))
+
   def sortPar(parList: Par[List[Int]]) = map(parList)(_.sorted)
+
+  def sequence[A](ps: List[Par[A]]): Par[List[A]] =
+    ps.foldLeft(unit(List[A]()))((pacc, pa) => map2(pacc, pa)((acc, a) => a :: acc))
+
+  def parMap[A, B](ps: List[A])(f: A => B): Par[List[B]] = fork {
+    val fbs = ps.map(asyncF(f))
+    sequence(fbs)
+  }
+
+  def parFilter[A](as: List[A])(f: A => Boolean): Par[List[A]] =
+    map(parMap(as)(a => if (f(a)) List(a) else List()))(_.flatten)
+
+  // summation
+
+  // max on IndexedSeq
+
+  // count words
+
+  // map3, map4, map5 in term of map2
+  def map3[A, B, C, D](a: Par[A], b: Par[B], c: Par[C])(f: (A, B, C) => D): Par[D] =
+    map2(map2(a, b)((_, _)), c)((ab, c) => f(ab._1, ab._2, c))
+
+  def map4[A, B, C, D, E](a: Par[A], b: Par[B], c: Par[C], d: Par[D])(f: (A, B, C, D) => E): Par[E] =
+    map2(map2(a, b)((_, _)), map2(c, d)((_, _)))((ab, cd) => f(ab._1, ab._2, cd._1, cd._2))
+
+  def map5[A, B, C, D, E, F](a: Par[A], b: Par[B], c: Par[C], d: Par[D], e: Par[E])(f: (A, B, C, D, E) => F): Par[F] =
+    map2(map4(a, b, c, d)((_, _, _, _)), e)((abcd, e) => f(abcd._1, abcd._2, abcd._3, abcd._4, e))
 
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean = 
     p(e).get == p2(e).get
