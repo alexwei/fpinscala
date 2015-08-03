@@ -50,10 +50,28 @@ object Par {
     map(parMap(as)(a => if (f(a)) List(a) else List()))(_.flatten)
 
   // summation
+  def parCombine[A, B](as: Seq[A], z: B)(f: A => B)(g: (B, B) => B): Par[B] =
+    if (as.size <= 1) Par.unit(as.headOption.map(f).getOrElse(z))
+    else {
+      val (l, r) = as.splitAt(as.size / 2)
+      map2(parCombine(l, z)(f)(g), parCombine(r, z)(f)(g))(g)
+    }
 
-  // max on IndexedSeq
+  def parMax(ints: IndexedSeq[Int]): Par[Option[Int]] =
+    parCombine(ints, None: Option[Int])(Some(_)){
+      case (Some(i), Some(j)) => Some(math.max(i, j))
+      case (Some(i), None) => Some(i)
+      case (None, Some(j)) => Some(j)
+      case _ => None
+    }
+
+  def flatMap[A, B](pa: Par[A])(f: A => Par[B]): Par[B] = ???
 
   // count words
+  def words(paragraph: String): List[String] = paragraph.split("\\s+").toList
+
+  def countWords(paragraphs: List[String]): Par[Int] =
+    flatMap(parMap(paragraphs)(words))((ws: List[List[String]]) => parCombine(ws, 0)(_.size)(_ + _))
 
   // map3, map4, map5 in term of map2
   def map3[A, B, C, D](a: Par[A], b: Par[B], c: Par[C])(f: (A, B, C) => D): Par[D] =
